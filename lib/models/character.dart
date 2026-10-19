@@ -1,6 +1,7 @@
 class Character {
   final String id, name, emoji, gender, hair, skin;
   final bool older, glasses, beard, headwear, hijab, thobe;
+  final String? image;
 
   const Character({
     required this.id,
@@ -15,21 +16,23 @@ class Character {
     required this.thobe,
     required this.hair,
     required this.skin,
+    this.image,
   });
 
   factory Character.fromJson(Map<String, dynamic> j) => Character(
-        id: j['id'],
-        name: j['name'],
-        emoji: j['emoji'],
-        gender: j['gender'],
-        older: j['older'],
-        glasses: j['glasses'],
-        beard: j['beard'],
-        headwear: j['headwear'],
-        hijab: j['hijab'],
-        thobe: j['thobe'],
-        hair: j['hair'],
-        skin: j['skin'],
+        id: j['id'] ?? '',
+        name: j['name'] ?? '',
+        emoji: j['emoji'] ?? '👤',
+        gender: j['gender'] ?? 'رجل',
+        older: j['older'] ?? false,
+        glasses: j['glasses'] ?? false,
+        beard: j['beard'] ?? false,
+        headwear: j['headwear'] ?? false,
+        hijab: j['hijab'] ?? false,
+        thobe: j['thobe'] ?? false,
+        hair: j['hair'] ?? 'داكن',
+        skin: j['skin'] ?? 'فاتحة',
+        image: j['image'],
       );
 
   /// Returns whether this character has the given trait.

@@ -23,7 +23,7 @@ void main() {
     await tester.pumpWidget(const ArabicCouplesGame());
     await tester.pumpAndSettle();
 
-    expect(find.text('من أنا؟ 💜'), findsOneWidget);
+    expect(find.text('من أنا؟ 💜'), findsAtLeastNWidgets(1));
     expect(find.text('خمن الشخصية'), findsOneWidget);
     expect(find.text('جلسة الأزواج المنظمة'), findsOneWidget);
     expect(find.text('أسئلة وتحديات للأزواج'), findsOneWidget);

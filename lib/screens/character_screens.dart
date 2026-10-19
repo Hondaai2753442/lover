@@ -215,7 +215,19 @@ class _CharacterSelectionScreenState extends State<CharacterSelectionScreen> {
           children: [
             Row(
               children: [
-                Text(c.emoji, style: const TextStyle(fontSize: 48)),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: c.image != null
+                      ? Image.asset(
+                          c.image!,
+                          width: 70,
+                          height: 90,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) =>
+                              Text(c.emoji, style: const TextStyle(fontSize: 48)),
+                        )
+                      : Text(c.emoji, style: const TextStyle(fontSize: 48)),
+                ),
                 const SizedBox(width: 14),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -339,7 +351,7 @@ class _CharacterSelectionScreenState extends State<CharacterSelectionScreen> {
                   crossAxisCount: 4,
                   crossAxisSpacing: 10,
                   mainAxisSpacing: 10,
-                  childAspectRatio: 0.78,
+                  childAspectRatio: 0.68,
                 ),
                 itemBuilder: (context, i) {
                   final c = widget.characters[i];
@@ -362,7 +374,19 @@ class _CharacterSelectionScreenState extends State<CharacterSelectionScreen> {
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text(c.emoji, style: const TextStyle(fontSize: 34)),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: c.image != null
+                                ? Image.asset(
+                                    c.image!,
+                                    width: 52,
+                                    height: 66,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) =>
+                                        Text(c.emoji, style: const TextStyle(fontSize: 32)),
+                                  )
+                                : Text(c.emoji, style: const TextStyle(fontSize: 32)),
+                          ),
                           const SizedBox(height: 6),
                           Text(
                             c.name,
@@ -845,7 +869,7 @@ class _GuessGameScreenState extends State<GuessGameScreen> {
               crossAxisCount: 4,
               crossAxisSpacing: 8,
               mainAxisSpacing: 8,
-              childAspectRatio: 0.78,
+              childAspectRatio: 0.68,
             ),
             itemBuilder: (context, i) {
               final c = widget.characters[i];
@@ -867,7 +891,19 @@ class _GuessGameScreenState extends State<GuessGameScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(c.emoji, style: const TextStyle(fontSize: 32)),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: c.image != null
+                              ? Image.asset(
+                                  c.image!,
+                                  width: 48,
+                                  height: 62,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) =>
+                                      Text(c.emoji, style: const TextStyle(fontSize: 30)),
+                                )
+                              : Text(c.emoji, style: const TextStyle(fontSize: 30)),
+                        ),
                         const SizedBox(height: 4),
                         Text(
                           c.name,
@@ -910,12 +946,31 @@ class _GuessGameScreenState extends State<GuessGameScreen> {
   Widget _buildAnswerView() {
     final answeringPlayer = player == 1 ? 2 : 1;
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Spacer(),
-          const Text('🤫', textAlign: TextAlign.center, style: TextStyle(fontSize: 64)),
+          Center(
+            child: Container(
+              width: 72,
+              height: 72,
+              decoration: const BoxDecoration(
+                color: AppColors.purple,
+                shape: BoxShape.circle,
+              ),
+              child: const Center(
+                child: Text(
+                  '?',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 38,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ),
+          ),
           const SizedBox(height: 16),
           Text(
             'دور اللاعب $answeringPlayer بالإجابة',
@@ -926,39 +981,75 @@ class _GuessGameScreenState extends State<GuessGameScreen> {
               color: AppColors.ink,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 4),
           const Text(
             'أجب بصدق عن شخصيتك السرية، ولا تظهرها للشريك.',
             textAlign: TextAlign.center,
-            style: TextStyle(color: AppColors.muted, height: 1.5),
+            style: TextStyle(color: AppColors.muted, fontSize: 13),
           ),
-          const SizedBox(height: 28),
+          const SizedBox(height: 24),
           Container(
-            padding: const EdgeInsets.all(22),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
             decoration: BoxDecoration(
-              color: AppColors.palePurple,
-              borderRadius: BorderRadius.circular(22),
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: AppColors.palePurple, width: 2),
+              boxShadow: AppShadows.cardShadow,
             ),
             child: Text(
               pendingQuestion ?? '',
               textAlign: TextAlign.center,
               style: const TextStyle(
-                fontSize: 20,
-                color: AppColors.deepPurple,
+                fontSize: 22,
+                color: AppColors.ink,
                 fontWeight: FontWeight.w900,
                 height: 1.5,
               ),
             ),
           ),
           const SizedBox(height: 24),
-          FilledButton(
-            onPressed: () => _answer(true),
-            child: const Text('نعم 👍'),
+          SizedBox(
+            height: 52,
+            child: FilledButton.icon(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.purple,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+              onPressed: () => _answer(true),
+              icon: const Icon(Icons.check_rounded, color: Colors.white, size: 22),
+              label: const Text('نعم', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+            ),
           ),
           const SizedBox(height: 12),
-          OutlinedButton(
-            onPressed: () => _answer(false),
-            child: const Text('لا 👎'),
+          SizedBox(
+            height: 52,
+            child: OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: Color(0xFFDDD7EE), width: 1.5),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+              onPressed: () => _answer(false),
+              icon: const Icon(Icons.close_rounded, color: AppColors.ink, size: 22),
+              label: const Text('لا', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.ink)),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.palePurple,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                'عدد الشخصيات المتبقية: ${available.length}',
+                style: const TextStyle(
+                  color: AppColors.deepPurple,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
           ),
           const Spacer(),
         ],
@@ -967,38 +1058,86 @@ class _GuessGameScreenState extends State<GuessGameScreen> {
   }
 
   Widget _buildWinnerView() {
+    final target = player == 1 ? widget.secret2 : widget.secret1;
     return Center(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(28),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text('🎉', style: TextStyle(fontSize: 80)),
-            const SizedBox(height: 16),
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                Container(
+                  width: 140,
+                  height: 140,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.palePurple,
+                  ),
+                ),
+                if (target.image != null)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: Image.asset(
+                      target.image!,
+                      width: 90,
+                      height: 115,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) =>
+                          Text(target.emoji, style: const TextStyle(fontSize: 64)),
+                    ),
+                  )
+                else
+                  Text(target.emoji, style: const TextStyle(fontSize: 64)),
+              ],
+            ),
+            const SizedBox(height: 20),
             const Text(
-              'مبروووك!',
+              'لقد خمنت الشخصية بنجاح! 🎉',
+              textAlign: TextAlign.center,
               style: TextStyle(
-                fontSize: 32,
-                color: AppColors.deepPurple,
+                fontSize: 24,
+                color: AppColors.ink,
                 fontWeight: FontWeight.w900,
               ),
             ),
-            const SizedBox(height: 10),
-            Text(
-              '$winner فاز بالتخمين الصحيح! (+30 نقطة) 💜',
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 20, color: AppColors.ink, fontWeight: FontWeight.w700),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.palePurple,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Text(
+                'إنها شخصية: ${target.name}',
+                style: const TextStyle(
+                  fontSize: 20,
+                  color: AppColors.purple,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
             ),
-            const SizedBox(height: 28),
-            FilledButton.icon(
-              onPressed: _restart,
-              icon: const Icon(Icons.replay_rounded),
-              label: const Text('جولة جديدة (تبادل الأدوار)'),
+            const SizedBox(height: 8),
+            Text(
+              '$winner فاز بالجولة (+30 نقطة) 💜',
+              style: const TextStyle(color: AppColors.muted, fontSize: 14),
+            ),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: _restart,
+                child: const Text('العب مرة أخرى'),
+              ),
             ),
             const SizedBox(height: 12),
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('الرجوع للرئيسية'),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('العودة إلى القائمة'),
+              ),
             ),
           ],
         ),

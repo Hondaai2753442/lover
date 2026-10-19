@@ -34,6 +34,46 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  void _showGameRules() {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Row(
+          children: [
+            Icon(Icons.menu_book_rounded, color: AppColors.purple),
+            SizedBox(width: 10),
+            Text('قواعد لعبة «من أنا؟» 📖'),
+          ],
+        ),
+        content: const SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('1. يختار كل لاعب شخصية سرية من اللوحة، ويتم إخفاؤها تماماً عن الشريك.',
+                  style: TextStyle(height: 1.6, fontWeight: FontWeight.w600)),
+              SizedBox(height: 10),
+              Text('2. يتناوب الشريكان على طرح أسئلة إجابتها (نعم / لا) حول صفات الشخصية (اللحية، النظارة، الشماغ، الحجاب، إلخ).',
+                  style: TextStyle(height: 1.6)),
+              SizedBox(height: 10),
+              Text('3. يتم استبعاد الشخصيات التي لا تنطبق عليها الإجابات لتضييق دائرة التخمين.',
+                  style: TextStyle(height: 1.6)),
+              SizedBox(height: 10),
+              Text('4. أول من يخمن شخصية الطرف الآخر بدقة يفوز بالجولة ويحصل على +30 نقطة!',
+                  style: TextStyle(height: 1.6)),
+            ],
+          ),
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('فهمت القواعد'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final streak = PreferencesService.streakDays;
@@ -129,9 +169,9 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Hero Banner
+              // Hero Banner Matching Reference Screen 1
               Container(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
                 decoration: BoxDecoration(
                   gradient: AppColors.primaryGradient,
                   borderRadius: BorderRadius.circular(30),
@@ -139,62 +179,128 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 child: Column(
                   children: [
-                    const Text('💜', style: TextStyle(fontSize: 34)),
-                    const SizedBox(height: 6),
                     const Text(
-                      'من أنا؟',
+                      'من أنا؟ 💜',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 34,
+                        fontSize: 32,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
                     const Text(
-                      'ألعاب التخمين والتقارب الحميم للأزواج',
-                      textAlign: TextAlign.center,
+                      'خمن شخصية شريكك',
                       style: TextStyle(
                         color: Colors.white70,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                     const SizedBox(height: 16),
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text('👳🏻‍♂️', style: TextStyle(fontSize: 42)),
-                        SizedBox(width: 14),
-                        Text('❔', style: TextStyle(fontSize: 30)),
-                        SizedBox(width: 14),
-                        Text('🧕🏻', style: TextStyle(fontSize: 42)),
-                      ],
-                    ),
-                    const SizedBox(height: 18),
-                    FilledButton.icon(
-                      style: FilledButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: AppColors.deepPurple,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 12,
+                    // 3D Couple Illustration
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: Image.asset(
+                        'assets/images/hero_couple.png',
+                        height: 175,
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) => const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text('👳🏻‍♂️', style: TextStyle(fontSize: 42)),
+                            SizedBox(width: 14),
+                            Text('❔', style: TextStyle(fontSize: 30)),
+                            SizedBox(width: 14),
+                            Text('🧕🏻', style: TextStyle(fontSize: 42)),
+                          ],
                         ),
                       ),
-                      onPressed: () async {
-                        await Navigator.push(
+                    ),
+                    const SizedBox(height: 20),
+                    // Button 1: ابدأ اللعب
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: AppColors.deepPurple,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        onPressed: () async {
+                          await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const CharacterIntroScreen(),
+                            ),
+                          );
+                          _loadState();
+                        },
+                        icon: const Icon(Icons.play_arrow_rounded, size: 24),
+                        label: const Text(
+                          'ابدأ اللعب',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    // Button 2: اللعب عن بعد
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.white.withValues(alpha: 0.18),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        onPressed: () => Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => const StructuredSessionScreen(),
+                            builder: (_) => const OnlineRoomScreen(),
                           ),
-                        );
-                        _loadState();
-                      },
-                      icon: const Icon(Icons.flash_on_rounded, size: 20),
-                      label: const Text(
-                        'ابدأ جلسة اليوم المنظمة (10 دقائق)',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 14,
+                        ),
+                        icon: const Icon(Icons.people_outline_rounded, size: 20),
+                        label: const Text(
+                          'اللعب عن بُعد',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    // Button 3: قواعد اللعبة
+                    SizedBox(
+                      width: double.infinity,
+                      height: 46,
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          side: BorderSide(
+                            color: Colors.white.withValues(alpha: 0.35),
+                            width: 1.5,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        onPressed: _showGameRules,
+                        icon: const Icon(Icons.menu_book_rounded, size: 18),
+                        label: const Text(
+                          'قواعد اللعبة',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                          ),
                         ),
                       ),
                     ),
@@ -251,38 +357,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(height: 16),
               ],
-
-              // Play Mode Tabs (Play on 1 Device vs Play Online)
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const CharacterIntroScreen(),
-                        ),
-                      ),
-                      icon: const Icon(Icons.phone_android_rounded),
-                      label: const Text('جهاز واحد'),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: FilledButton.icon(
-                      onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const OnlineRoomScreen(),
-                        ),
-                      ),
-                      icon: const Icon(Icons.wifi_tethering_rounded),
-                      label: const Text('عن بُعد (غرف)'),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
 
               // Section Title
               const Text(

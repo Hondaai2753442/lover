@@ -27,3 +27,5 @@ flutter:
     - assets/couples_cards.json
     - assets/characters.json
     - assets/know_me_questions.json
+    - assets/images/
+    - assets/characters/
