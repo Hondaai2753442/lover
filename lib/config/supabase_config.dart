@@ -1,9 +1,9 @@
-/// Supabase configuration and client access.
-///
-/// IMPORTANT — Security:
-/// • The `publishableKey` (anon key) is safe for client-side use; it
-///   only grants access allowed by Row Level Security (RLS) policies.
-/// • NEVER embed the `service_role` key in the app.
+// Supabase configuration and client access.
+//
+// IMPORTANT — Security:
+// • The `publishableKey` (anon key) is safe for client-side use; it
+//   only grants access allowed by Row Level Security (RLS) policies.
+// • NEVER embed the `service_role` key in the app.
 
 class SupabaseConfig {
   SupabaseConfig._();
