@@ -43,6 +43,7 @@ class Character {
         'hijab' => hijab,
         'thobe' => thobe,
         'light_skin' => skin == 'فاتحة',
+        'olive_skin' => skin == 'حنطية',
         'dark_hair' => hair == 'داكن',
         _ => false,
       };

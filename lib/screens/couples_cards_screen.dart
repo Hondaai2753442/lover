@@ -52,6 +52,8 @@ class _CouplesCardsScreenState extends State<CouplesCardsScreen> {
     }
   }
 
+  final Set<String> _seenInCurrentSession = {};
+
   List<CouplesCard> get _filteredCards {
     if (_selectedCategory == 'الكل') return _allCards;
     return _allCards
@@ -65,15 +67,26 @@ class _CouplesCardsScreenState extends State<CouplesCardsScreen> {
       setState(() => _currentCard = null);
       return;
     }
-    if (pool.length == 1) {
-      setState(() => _currentCard = pool.first);
-      return;
+
+    // Filter cards not yet seen in current session
+    final unseen = pool.where((c) => !_seenInCurrentSession.contains(c.id)).toList();
+    final effectivePool = unseen.isNotEmpty ? unseen : pool;
+
+    if (unseen.isEmpty) {
+      _seenInCurrentSession.clear();
     }
 
     CouplesCard next;
-    do {
-      next = pool[_random.nextInt(pool.length)];
-    } while (next.id == _currentCard?.id && pool.length > 1);
+    if (effectivePool.length == 1) {
+      next = effectivePool.first;
+    } else {
+      do {
+        next = effectivePool[_random.nextInt(effectivePool.length)];
+      } while (next.id == _currentCard?.id && effectivePool.length > 1);
+    }
+
+    _seenInCurrentSession.add(next.id);
+    PreferencesService.recordGameFinished(isCard: true, pointsEarned: 2);
 
     setState(() => _currentCard = next);
   }

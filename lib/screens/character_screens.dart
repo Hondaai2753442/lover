@@ -42,10 +42,11 @@ class CharacterIntroScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 24),
-              const _FeatureRow(icon: Icons.face_retouching_natural, text: '24 شخصية بملامح وأزياء عربية متنوعة'),
-              const _FeatureRow(icon: Icons.help_outline_rounded, text: 'صفات واضحة: لحية، نظارة، حجاب، ثوب...'),
+              const _FeatureRow(icon: Icons.face_retouching_natural, text: '24 شخصية بملامح وأزياء عربية متنوعة ومحددة'),
+              const _FeatureRow(icon: Icons.help_outline_rounded, text: 'صفات دقيقة: لحية، نظارة، شماغ، حجاب، ثوب...'),
+              const _FeatureRow(icon: Icons.history_rounded, text: 'سجل كامل للأسئلة والإجابات لمتابعة الاستدلال'),
+              const _FeatureRow(icon: Icons.restore_rounded, text: 'إمكانية استعادة أي شخصية تم استبعادها بالخطأ'),
               const _FeatureRow(icon: Icons.shield_rounded, text: 'شاشة حماية عند تسليم الجهاز لمنع كشف السر'),
-              const _FeatureRow(icon: Icons.swap_horiz_rounded, text: 'لعب بالتناوب على نفس الجهاز مع زر تخطي'),
               const Spacer(),
               FilledButton.icon(
                 onPressed: () async {
@@ -109,7 +110,13 @@ class _FeatureRow extends StatelessWidget {
 // ─── 2. Character Selection Screen ───────────────────────
 class CharacterSelectionScreen extends StatefulWidget {
   final List<Character> characters;
-  const CharacterSelectionScreen({super.key, required this.characters});
+  final int startingPlayer;
+
+  const CharacterSelectionScreen({
+    super.key,
+    required this.characters,
+    this.startingPlayer = 1,
+  });
 
   @override
   State<CharacterSelectionScreen> createState() =>
@@ -117,20 +124,28 @@ class CharacterSelectionScreen extends StatefulWidget {
 }
 
 class _CharacterSelectionScreenState extends State<CharacterSelectionScreen> {
-  int selectingPlayer = 1;
+  late int selectingPlayer;
   Character? selected;
   Character? secret1;
   Character? secret2;
 
+  @override
+  void initState() {
+    super.initState();
+    selectingPlayer = widget.startingPlayer;
+  }
+
   void _onConfirm() {
     if (selected == null) return;
 
-    if (selectingPlayer == 1) {
+    final otherPlayer = selectingPlayer == 1 ? 2 : 1;
+
+    if (secret1 == null && selectingPlayer == 1) {
       secret1 = selected;
       selected = null;
       PassDeviceScreen.show(
         context,
-        targetPlayer: 'اللاعب 2',
+        targetPlayer: 'اللاعب $otherPlayer',
         instruction: 'سلّم الجهاز للاعب الثاني ليختار شخصيته السرية بهدوء.',
         onReady: () {
           setState(() {
@@ -138,26 +153,147 @@ class _CharacterSelectionScreenState extends State<CharacterSelectionScreen> {
           });
         },
       );
-    } else {
+    } else if (secret2 == null && selectingPlayer == 2) {
       secret2 = selected;
-      PassDeviceScreen.show(
-        context,
-        targetPlayer: 'اللاعب 1',
-        instruction: 'تم اختيار الشخصيتين السريتين بنجاح! يبدأ اللاعب الأول بطرح السؤال الأول.',
-        onReady: () {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (_) => GuessGameScreen(
-                characters: widget.characters,
-                secret1: secret1!,
-                secret2: secret2!,
-              ),
-            ),
-          );
-        },
-      );
+      selected = null;
+      if (secret1 == null) {
+        // Player 2 selected first, now Player 1 selects
+        PassDeviceScreen.show(
+          context,
+          targetPlayer: 'اللاعب 1',
+          instruction: 'سلّم الجهاز للاعب الأول ليختار شخصيته السرية بهدوء.',
+          onReady: () {
+            setState(() {
+              selectingPlayer = 1;
+            });
+          },
+        );
+      } else {
+        _startBattle();
+      }
+    } else {
+      secret1 ??= selected;
+      secret2 ??= selected;
+      _startBattle();
     }
+  }
+
+  void _startBattle() {
+    final firstPlayer = widget.startingPlayer;
+    PassDeviceScreen.show(
+      context,
+      targetPlayer: 'اللاعب $firstPlayer',
+      instruction:
+          'تم اختيار الشخصيتين السريتين بنجاح! يبدأ اللاعب $firstPlayer بطرح السؤال الأول.',
+      onReady: () {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => GuessGameScreen(
+              characters: widget.characters,
+              secret1: secret1!,
+              secret2: secret2!,
+              startingPlayer: widget.startingPlayer,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showCharacterDetails(Character c) {
+    showModalBottomSheet<void>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Text(c.emoji, style: const TextStyle(fontSize: 48)),
+                const SizedBox(width: 14),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      c.name,
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.ink,
+                      ),
+                    ),
+                    Text(
+                      '${c.gender} • ${c.older ? "كبير/ة بالسن" : "شاب/ة"}',
+                      style: const TextStyle(color: AppColors.muted),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const Divider(height: 24),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _traitChip('نظارة', c.glasses),
+                _traitChip('لحية أو شارب', c.beard),
+                _traitChip('غطاء رأس/شماغ', c.headwear),
+                _traitChip('حجاب', c.hijab),
+                _traitChip('ثوب', c.thobe),
+                _traitChip('بشرة فاتحة', c.skin == 'فاتحة'),
+                _traitChip('شعر داكن', c.hair == 'داكن'),
+              ],
+            ),
+            const SizedBox(height: 18),
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                setState(() => selected = c);
+              },
+              child: const Text('اختيار هذه الشخصية'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _traitChip(String label, bool active) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: active ? AppColors.palePurple : const Color(0xFFF0EDF5),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: active ? AppColors.purple : Colors.transparent,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            active ? Icons.check_circle_rounded : Icons.cancel_outlined,
+            size: 14,
+            color: active ? AppColors.purple : AppColors.muted,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: active ? AppColors.deepPurple : AppColors.muted,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -183,7 +319,7 @@ class _CharacterSelectionScreenState extends State<CharacterSelectionScreen> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        'اللاعب $selectingPlayer: اختر شخصيتك السرية دون أن يراها الطرف الآخر.',
+                        'اللاعب $selectingPlayer: اختر شخصيتك السرية. اضغط مطولاً لرؤية التفاصيل.',
                         style: const TextStyle(
                           color: AppColors.deepPurple,
                           fontWeight: FontWeight.w700,
@@ -210,6 +346,7 @@ class _CharacterSelectionScreenState extends State<CharacterSelectionScreen> {
                   final isSelected = selected?.id == c.id;
                   return InkWell(
                     onTap: () => setState(() => selected = c),
+                    onLongPress: () => _showCharacterDetails(c),
                     borderRadius: BorderRadius.circular(16),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 180),
@@ -254,9 +391,9 @@ class _CharacterSelectionScreenState extends State<CharacterSelectionScreen> {
                 child: FilledButton(
                   onPressed: selected == null ? null : _onConfirm,
                   child: Text(
-                    selectingPlayer == 1
-                        ? 'تثبيت وتسليم الجهاز للاعب 2'
-                        : 'تثبيت وبدء اللعبة',
+                    secret1 == null || secret2 == null
+                        ? 'تثبيت وتسليم الهاتف للطرف الآخر'
+                        : 'تثبيت وبدء التحدي',
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                 ),
@@ -274,12 +411,14 @@ class GuessGameScreen extends StatefulWidget {
   final List<Character> characters;
   final Character secret1;
   final Character secret2;
+  final int startingPlayer;
 
   const GuessGameScreen({
     super.key,
     required this.characters,
     required this.secret1,
     required this.secret2,
+    this.startingPlayer = 1,
   });
 
   @override
@@ -287,13 +426,14 @@ class GuessGameScreen extends StatefulWidget {
 }
 
 class _GuessGameScreenState extends State<GuessGameScreen> {
-  int player = 1;
+  late int player;
   String? pendingTrait;
   String? pendingQuestion;
   bool answering = false;
   String? winner;
   final Set<String> eliminated1 = {};
   final Set<String> eliminated2 = {};
+  final List<Map<String, dynamic>> questionHistory = [];
 
   static const traits = <Map<String, String>>[
     {'key': 'gender_male', 'label': 'هل الشخصية رجل؟', 'short': 'رجل'},
@@ -308,6 +448,12 @@ class _GuessGameScreenState extends State<GuessGameScreen> {
     {'key': 'dark_hair', 'label': 'هل شعرها داكن/أسود؟', 'short': 'شعر داكن'},
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    player = widget.startingPlayer;
+  }
+
   Set<String> get currentEliminated => player == 1 ? eliminated1 : eliminated2;
   List<Character> get available =>
       widget.characters.where((c) => !currentEliminated.contains(c.id)).toList();
@@ -319,19 +465,26 @@ class _GuessGameScreenState extends State<GuessGameScreen> {
       answering = true;
     });
 
-    // P0: Pass device to the answering player so they answer privately!
     PassDeviceScreen.show(
       context,
       targetPlayer: 'اللاعب ${player == 1 ? 2 : 1}',
       instruction: 'أجب على السؤال بصدق بناءً على شخصيتك السرية دون كشفها.',
-      onReady: () {
-        // Now ready to answer on screen
-      },
+      onReady: () {},
     );
   }
 
   void _answer(bool yes) {
     final key = pendingTrait!;
+    final questionText = pendingQuestion!;
+    final askingPlayer = player;
+
+    // Record question in history
+    questionHistory.insert(0, {
+      'asker': askingPlayer,
+      'question': questionText,
+      'answer': yes,
+    });
+
     // Automatically eliminate candidates that don't match the answer
     for (final c in widget.characters) {
       if (c.trait(key) != yes) {
@@ -356,33 +509,69 @@ class _GuessGameScreenState extends State<GuessGameScreen> {
     );
   }
 
+  void _handleCharacterTap(Character c) {
+    if (currentEliminated.contains(c.id)) {
+      // Re-include character dialog (P0 requirement: إتاحة استبعاد وإعادة إظهار)
+      showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('استعادة الشخصية'),
+          content: Text('الشخصية «${c.name}» مستبعدة حاليًا. هل ترغب في إعادتها إلى اللوحة؟'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('إلغاء'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(ctx);
+                setState(() {
+                  currentEliminated.remove(c.id);
+                });
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('تمت استعادة «${c.name}» إلى لوحتك بنجاح.')),
+                );
+              },
+              child: const Text('إعادة إظهار'),
+            ),
+          ],
+        ),
+      );
+    } else {
+      _confirmGuess(c);
+    }
+  }
+
   void _confirmGuess(Character c) {
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('تأكيد التخمين'),
+        title: const Text('تأكيد التخمين النهائي'),
         content: Text('هل أنت متأكد أن شخصية الشريك السرية هي «${c.name}»؟'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('رجوع'),
+            child: const Text('تراجع'),
           ),
           FilledButton(
             onPressed: () {
               Navigator.pop(ctx);
               _makeGuess(c);
             },
-            child: const Text('تخمين نهائي'),
+            child: const Text('نعم، أخمن هذه الشخصية!'),
           ),
         ],
       ),
     );
   }
 
-  void _makeGuess(Character c) {
+  void _makeGuess(Character c) async {
     final target = player == 1 ? widget.secret2 : widget.secret1;
     if (c.id == target.id) {
-      PreferencesService.recordGamePlay();
+      await PreferencesService.recordGameFinished(
+        isGuessWin: true,
+        pointsEarned: 30,
+      );
       setState(() => winner = 'اللاعب $player');
     } else {
       currentEliminated.add(c.id);
@@ -417,11 +606,105 @@ class _GuessGameScreenState extends State<GuessGameScreen> {
     );
   }
 
+  void _showHistorySheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(22),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.history_rounded, color: AppColors.purple),
+                const SizedBox(width: 8),
+                const Text(
+                  'سجل الأسئلة والإجابات',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.ink,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  '${questionHistory.length} أسئلة',
+                  style: const TextStyle(color: AppColors.muted, fontSize: 13),
+                ),
+              ],
+            ),
+            const Divider(height: 24),
+            Expanded(
+              child: questionHistory.isEmpty
+                  ? const Center(
+                      child: Text(
+                        'لم يتم طرح أي أسئلة بعد في هذه الجولة',
+                        style: TextStyle(color: AppColors.muted),
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: questionHistory.length,
+                      itemBuilder: (context, i) {
+                        final item = questionHistory[i];
+                        final isYes = item['answer'] == true;
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 10),
+                          padding: const EdgeInsets.all(12),
+                          decoration: AppDecorations.outlinedCard(radius: 14),
+                          child: Row(
+                            children: [
+                              Text(
+                                isYes ? '✅' : '❌',
+                                style: const TextStyle(fontSize: 20),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      item['question'] as String,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 14,
+                                        color: AppColors.ink,
+                                      ),
+                                    ),
+                                    Text(
+                                      'اللاعب ${item["asker"]} • الإجابة: ${isYes ? "نعم" : "لا"}',
+                                      style: const TextStyle(
+                                        color: AppColors.muted,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _restart() {
+    // Swap starting player for the next round
+    final nextStarter = widget.startingPlayer == 1 ? 2 : 1;
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(
-        builder: (_) => CharacterSelectionScreen(characters: widget.characters),
+        builder: (_) => CharacterSelectionScreen(
+          characters: widget.characters,
+          startingPlayer: nextStarter,
+        ),
       ),
     );
   }
@@ -432,6 +715,11 @@ class _GuessGameScreenState extends State<GuessGameScreen> {
       appBar: AppBar(
         title: const Text('خمن الشخصية'),
         actions: [
+          IconButton(
+            tooltip: 'سجل الأسئلة',
+            onPressed: _showHistorySheet,
+            icon: const Icon(Icons.history_rounded),
+          ),
           IconButton(
             tooltip: 'إعادة اللعب',
             onPressed: _restart,
@@ -540,9 +828,9 @@ class _GuessGameScreenState extends State<GuessGameScreen> {
                 ),
               ),
               const Spacer(),
-              const Text(
-                'اضغط شخصية للتخمين',
-                style: TextStyle(color: AppColors.muted, fontSize: 12),
+              Text(
+                'مستبعدة: ${currentEliminated.length} (اضغط لاستعادتها)',
+                style: const TextStyle(color: AppColors.muted, fontSize: 11),
               ),
             ],
           ),
@@ -563,7 +851,7 @@ class _GuessGameScreenState extends State<GuessGameScreen> {
               final c = widget.characters[i];
               final out = currentEliminated.contains(c.id);
               return InkWell(
-                onTap: out ? null : () => _confirmGuess(c),
+                onTap: () => _handleCharacterTap(c),
                 borderRadius: BorderRadius.circular(14),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
@@ -575,7 +863,7 @@ class _GuessGameScreenState extends State<GuessGameScreen> {
                     ),
                   ),
                   child: Opacity(
-                    opacity: out ? 0.25 : 1,
+                    opacity: out ? 0.28 : 1,
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -591,7 +879,7 @@ class _GuessGameScreenState extends State<GuessGameScreen> {
                         ),
                         if (out)
                           const Text(
-                            'مستبعدة',
+                            'مستبعدة ↩',
                             style: TextStyle(fontSize: 9, color: AppColors.muted),
                           ),
                       ],
@@ -603,7 +891,7 @@ class _GuessGameScreenState extends State<GuessGameScreen> {
           ),
         ),
 
-        // Bottom skip bar (Always visible skip button - P0)
+        // Bottom skip bar
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
           child: SizedBox(
@@ -697,7 +985,7 @@ class _GuessGameScreenState extends State<GuessGameScreen> {
             ),
             const SizedBox(height: 10),
             Text(
-              '$winner فاز بالتخمين الصحيح! 💜',
+              '$winner فاز بالتخمين الصحيح! (+30 نقطة) 💜',
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 20, color: AppColors.ink, fontWeight: FontWeight.w700),
             ),
@@ -705,7 +993,7 @@ class _GuessGameScreenState extends State<GuessGameScreen> {
             FilledButton.icon(
               onPressed: _restart,
               icon: const Icon(Icons.replay_rounded),
-              label: const Text('جولة ثانية جديدة'),
+              label: const Text('جولة جديدة (تبادل الأدوار)'),
             ),
             const SizedBox(height: 12),
             TextButton(

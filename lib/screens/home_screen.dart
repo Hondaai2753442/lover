@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import '../services/preferences_service.dart';
 import '../theme/app_theme.dart';
+import 'achievements_screen.dart';
 import 'character_screens.dart';
 import 'couples_cards_screen.dart';
 import 'extra_games_screen.dart';
+import 'know_me_screen.dart';
 import 'online_room_screen.dart';
 import 'settings_screen.dart';
 import 'structured_session_screen.dart';
@@ -18,17 +20,69 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  Map<String, dynamic>? _activeSession;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadState();
+  }
+
+  void _loadState() {
+    setState(() {
+      _activeSession = PreferencesService.getActiveSession();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final streak = PreferencesService.streakDays;
+    final stats = PreferencesService.getStats();
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('من أنا؟ 💜'),
         actions: [
+          // Points & Achievements button
+          InkWell(
+            onTap: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const AchievementsScreen(),
+                ),
+              );
+              _loadState();
+            },
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.palePurple,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('🏆', style: TextStyle(fontSize: 14)),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${stats.totalPoints} ن',
+                    style: const TextStyle(
+                      color: AppColors.deepPurple,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
           // Streak indicator badge
           Container(
-            margin: const EdgeInsets.symmetric(vertical: 8),
+            margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
               color: AppColors.palePurple,
@@ -50,6 +104,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
+
           IconButton(
             tooltip: 'الإعدادات',
             icon: const Icon(Icons.settings_outlined, color: AppColors.ink),
@@ -62,10 +117,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               );
-              if (mounted) setState(() {});
+              _loadState();
             },
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
         ],
       ),
       body: SafeArea(
@@ -96,7 +151,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(height: 6),
                     const Text(
-                      'لعبة تخمين الشخصيات والتقارب للأزواج',
+                      'ألعاب التخمين والتقارب الحميم للأزواج',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Colors.white70,
@@ -125,12 +180,15 @@ class _HomeScreenState extends State<HomeScreen> {
                           vertical: 12,
                         ),
                       ),
-                      onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const StructuredSessionScreen(),
-                        ),
-                      ),
+                      onPressed: () async {
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const StructuredSessionScreen(),
+                          ),
+                        );
+                        _loadState();
+                      },
                       icon: const Icon(Icons.flash_on_rounded, size: 20),
                       label: const Text(
                         'ابدأ جلسة اليوم المنظمة (10 دقائق)',
@@ -143,11 +201,92 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
               ),
+              const SizedBox(height: 20),
+
+              // Resume Session Banner (if available)
+              if (_activeSession != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.palePurple,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: AppColors.purple, width: 1.5),
+                  ),
+                  child: Row(
+                    children: [
+                      const Text('⏳', style: TextStyle(fontSize: 26)),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'تابع لعبتك السابقة',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w800,
+                                color: AppColors.deepPurple,
+                                fontSize: 14,
+                              ),
+                            ),
+                            Text(
+                              'لديك جلسة غير مكتملة، هل ترغب في إكمالها؟',
+                              style: TextStyle(
+                                color: AppColors.muted,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          PreferencesService.clearActiveSession();
+                          _loadState();
+                        },
+                        child: const Text('إلغاء',
+                            style: TextStyle(color: Colors.redAccent, fontSize: 12)),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+
+              // Play Mode Tabs (Play on 1 Device vs Play Online)
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const CharacterIntroScreen(),
+                        ),
+                      ),
+                      icon: const Icon(Icons.phone_android_rounded),
+                      label: const Text('جهاز واحد'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const OnlineRoomScreen(),
+                        ),
+                      ),
+                      icon: const Icon(Icons.wifi_tethering_rounded),
+                      label: const Text('عن بُعد (غرف)'),
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 24),
 
               // Section Title
               const Text(
-                'اختر طريقة اللعب',
+                'ألعاب وتجارب اللقاء',
                 textAlign: TextAlign.right,
                 style: TextStyle(
                   fontSize: 20,
@@ -157,13 +296,13 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 12),
 
-              // Tile 1: خمن الشخصية
+              // Mode 1: خمن الشخصية
               _ModeTile(
                 icon: Icons.people_alt_rounded,
                 title: 'خمن الشخصية',
                 subtitle:
-                    '24 شخصية بملامح وأزياء عربية وأسئلة نعم أو لا بالتناوب',
-                badgeText: 'كلاسيكي',
+                    '24 شخصية بملامح وأزياء عربية، أسئلة نعم/لا مع شاشة تسليم الهاتف',
+                badgeText: 'كلاسيكي 🎭',
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -173,7 +312,23 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 12),
 
-              // Tile 2: جلسة الأزواج المنظمة
+              // Mode 2: قد إيش تعرفني؟ (Dedicated Mode!)
+              _ModeTile(
+                icon: Icons.psychology_alt_rounded,
+                title: 'قد إيش تعرفني؟',
+                subtitle:
+                    'إجابة سرية وتخمين للشريك في التفضيلات والعادات مع احتساب النقاط',
+                badgeText: 'جديد ✨',
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const KnowMeScreen(),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Mode 3: جلسة الأزواج المنظمة
               _ModeTile(
                 icon: Icons.access_time_rounded,
                 title: 'جلسة الأزواج المنظمة',
@@ -189,11 +344,11 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 12),
 
-              // Tile 3: أسئلة وتحديات للأزواج
+              // Mode 4: أسئلة وتحديات للأزواج
               _ModeTile(
                 icon: Icons.favorite_rounded,
                 title: 'أسئلة وتحديات للأزواج',
-                subtitle: '100+ بطاقة حوار وتقارب متدرجة مع زر تخطي دائم',
+                subtitle: '100+ بطاقة حوار متدرجة بدون تكرار في الجلسة الواحدة',
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -203,11 +358,12 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 12),
 
-              // Tile 4: ألعاب إضافية
+              // Mode 5: ألعاب إضافية
               _ModeTile(
                 icon: Icons.auto_awesome_rounded,
                 title: 'ألعاب خفيفة وسؤال اليوم',
-                subtitle: 'هذا أو ذاك، خمن إجابتي، والمفضلة، وأسئلتكم الخاصة',
+                subtitle:
+                    'هذا أو ذاك، المفضلة، وإدارة أسئلتكم الخاصة بالتعديل والحذف',
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -217,11 +373,12 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 12),
 
-              // Tile 5: غرف اللعب عن بعد (Supabase)
+              // Mode 6: غرف اللعب عن بعد (Supabase)
               _ModeTile(
                 icon: Icons.cloud_sync_rounded,
-                title: 'غرفة اللعب عن بعد',
-                subtitle: 'مزامنة مباشرة عبر Supabase للعب بين هاتفين برمز غرفة',
+                title: 'غرفة اللعب عن بعد (Supabase)',
+                subtitle:
+                    'مزامنة مباشرة عبر السحابة للعب بين هاتفين برمز سداسي آمن',
                 badgeText: 'سحابي ☁️',
                 onTap: () => Navigator.push(
                   context,
@@ -246,7 +403,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        'جميع الألعاب تعمل أوفلاين على نفس الجهاز مع شاشة حماية عند تسليم الهاتف.',
+                        'اللعب على جهاز واحد يعمل أوفلاين 100% مع شاشة تسليم محمية تمنع كشف الأسرار.',
                         textAlign: TextAlign.right,
                         style: TextStyle(
                           color: AppColors.muted,

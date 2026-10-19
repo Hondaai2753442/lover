@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../models/achievement.dart';
 
 /// Local storage service wrapping SharedPreferences.
 class PreferencesService {
@@ -29,17 +30,221 @@ class PreferencesService {
     await saveFavorites(current);
   }
 
-  // ─── Custom Cards ──────────────────────────────────
+  // ─── Custom Cards (CRUD) ───────────────────────────
   static const _customKey = 'custom_couples_cards_v1';
 
   static List<Map<String, dynamic>> getCustomCards() {
     final raw = _p.getString(_customKey);
     if (raw == null) return [];
-    return (jsonDecode(raw) as List).cast<Map<String, dynamic>>();
+    try {
+      return (jsonDecode(raw) as List).cast<Map<String, dynamic>>();
+    } catch (_) {
+      return [];
+    }
   }
 
   static Future<void> saveCustomCards(List<Map<String, dynamic>> cards) =>
       _p.setString(_customKey, jsonEncode(cards));
+
+  static Future<void> addCustomCard(Map<String, dynamic> card) async {
+    final list = getCustomCards();
+    list.add(card);
+    await saveCustomCards(list);
+    await unlockAchievement('custom_creator');
+  }
+
+  static Future<void> updateCustomCard(
+      String id, Map<String, dynamic> updated) async {
+    final list = getCustomCards();
+    final index = list.indexWhere((c) => c['id'] == id);
+    if (index != -1) {
+      list[index] = updated;
+      await saveCustomCards(list);
+    }
+  }
+
+  static Future<void> deleteCustomCard(String id) async {
+    final list = getCustomCards();
+    list.removeWhere((c) => c['id'] == id);
+    await saveCustomCards(list);
+  }
+
+  // ─── Active Session Resumption ──────────────────────
+  static const _activeSessionKey = 'active_game_session_v1';
+
+  static Map<String, dynamic>? getActiveSession() {
+    final raw = _p.getString(_activeSessionKey);
+    if (raw == null) return null;
+    try {
+      return jsonDecode(raw) as Map<String, dynamic>;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<void> saveActiveSession(Map<String, dynamic> data) =>
+      _p.setString(_activeSessionKey, jsonEncode(data));
+
+  static Future<void> clearActiveSession() =>
+      _p.remove(_activeSessionKey);
+
+  // ─── Stats & Points ────────────────────────────────
+  static const _statsKey = 'player_game_stats_v1';
+
+  static GameStats getStats() {
+    final raw = _p.getString(_statsKey);
+    if (raw == null) {
+      return GameStats(
+        currentStreak: streakDays,
+        highestStreak: streakDays,
+      );
+    }
+    try {
+      return GameStats.fromJson(jsonDecode(raw));
+    } catch (_) {
+      return const GameStats();
+    }
+  }
+
+  static Future<void> saveStats(GameStats stats) =>
+      _p.setString(_statsKey, jsonEncode(stats.toJson()));
+
+  static Future<void> addPoints(int points) async {
+    final current = getStats();
+    final updated = current.copyWith(
+      totalPoints: current.totalPoints + points,
+    );
+    await saveStats(updated);
+  }
+
+  static Future<void> recordGameFinished({
+    bool isGuessWin = false,
+    bool isKnowMe = false,
+    bool isCard = false,
+    int pointsEarned = 10,
+  }) async {
+    await recordGamePlay();
+    final current = getStats();
+    final updated = current.copyWith(
+      gamesPlayed: current.gamesPlayed + 1,
+      totalPoints: current.totalPoints + pointsEarned,
+      correctGuesses:
+          isGuessWin ? current.correctGuesses + 1 : current.correctGuesses,
+      knowMeAnswered:
+          isKnowMe ? current.knowMeAnswered + 1 : current.knowMeAnswered,
+      cardsExplored:
+          isCard ? current.cardsExplored + 1 : current.cardsExplored,
+      currentStreak: streakDays,
+      highestStreak: streakDays > current.highestStreak
+          ? streakDays
+          : current.highestStreak,
+    );
+    await saveStats(updated);
+
+    // Check achievement triggers
+    await unlockAchievement('first_game');
+    if (streakDays >= 3) await unlockAchievement('streak_3');
+    if (streakDays >= 7) await unlockAchievement('streak_7');
+    if (updated.correctGuesses >= 3) {
+      await unlockAchievement('guess_master');
+    }
+    if (updated.cardsExplored >= 20) {
+      await unlockAchievement('deep_talker');
+    }
+    if (updated.knowMeAnswered >= 10) {
+      await unlockAchievement('know_me_pro');
+    }
+  }
+
+  // ─── Achievements ──────────────────────────────────
+  static const _achievementsKey = 'player_achievements_v1';
+
+  static List<Achievement> _defaultAchievements() => [
+        const Achievement(
+          id: 'first_game',
+          title: 'أول خطوة 💜',
+          description: 'أكملتم أول جولة لعب معًا بنجاح',
+          emoji: '🌱',
+          points: 20,
+        ),
+        const Achievement(
+          id: 'streak_3',
+          title: 'بداية الالتزام 🔥',
+          description: 'حافظتم على اللعب والتقارب لمدة 3 أيام متتالية',
+          emoji: '🔥',
+          points: 30,
+        ),
+        const Achievement(
+          id: 'streak_7',
+          title: 'شعلة الأسبوع 🌟',
+          description: 'سلسلة أسبوع كامل من الحوارات اليومية',
+          emoji: '👑',
+          points: 50,
+        ),
+        const Achievement(
+          id: 'guess_master',
+          title: 'خبير التخمين 🎭',
+          description: 'فزتم بـ 3 تخمينات صحيحة في خمن الشخصية',
+          emoji: '🎯',
+          points: 40,
+        ),
+        const Achievement(
+          id: 'know_me_pro',
+          title: 'فاهم شريكي 💜',
+          description: 'أجبتم على 10 أسئلة في قد إيش تعرفني',
+          emoji: '✨',
+          points: 40,
+        ),
+        const Achievement(
+          id: 'deep_talker',
+          title: 'حوار من القلب 💬',
+          description: 'تصفحتم 20 بطاقة حوار وتحدي',
+          emoji: '💌',
+          points: 30,
+        ),
+        const Achievement(
+          id: 'custom_creator',
+          title: 'لمستنا الخاصة ✏️',
+          description: 'أضفتم بطاقة أو سؤالاً خاصاً بكم إلى اللعبة',
+          emoji: '🎨',
+          points: 25,
+        ),
+      ];
+
+  static List<Achievement> getAchievements() {
+    final raw = _p.getString(_achievementsKey);
+    final defaults = _defaultAchievements();
+    if (raw == null) return defaults;
+    try {
+      final list = (jsonDecode(raw) as List)
+          .map((e) => Achievement.fromJson(e))
+          .toList();
+      // Ensure all defaults exist
+      final map = {for (final a in list) a.id: a};
+      return defaults.map((d) => map[d.id] ?? d).toList();
+    } catch (_) {
+      return defaults;
+    }
+  }
+
+  static Future<void> saveAchievements(List<Achievement> list) =>
+      _p.setString(
+          _achievementsKey, jsonEncode(list.map((e) => e.toJson()).toList()));
+
+  static Future<bool> unlockAchievement(String id) async {
+    final list = getAchievements();
+    final index = list.indexWhere((a) => a.id == id);
+    if (index != -1 && !list[index].isUnlocked) {
+      list[index] = list[index].copyWith(
+        isUnlocked: true,
+        unlockedAt: DateTime.now(),
+      );
+      await saveAchievements(list);
+      await addPoints(list[index].points);
+      return true;
+    }
+    return false;
+  }
 
   // ─── Streak & Habits ────────────────────────────────
   static int get streakDays => _p.getInt('streak_days') ?? 1;

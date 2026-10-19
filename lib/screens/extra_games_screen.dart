@@ -58,58 +58,6 @@ class _ExtraGamesScreenState extends State<ExtraGamesScreen> {
     }
   }
 
-  void _showAddCustomDialog() {
-    final controller = TextEditingController();
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('إضافة سؤال خاص'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          maxLines: 3,
-          decoration: const InputDecoration(
-            hintText: 'اكتبوا سؤالكم هنا...',
-            border: OutlineInputBorder(),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('إلغاء'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              final text = controller.text.trim();
-              if (text.isNotEmpty) {
-                final id = 'custom_${DateTime.now().microsecondsSinceEpoch}';
-                final newCustom = {
-                  'id': id,
-                  'category': 'أسئلتنا الخاصة',
-                  'type': 'سؤال',
-                  'level': 'خاص',
-                  'text': text,
-                  'purpose': 'سؤال أضفتموه بأنفسكم.',
-                };
-                final currentList = PreferencesService.getCustomCards();
-                currentList.add(newCustom);
-                Navigator.pop(ctx);
-                await PreferencesService.saveCustomCards(currentList);
-                await _loadData();
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('تمت إضافة السؤال بنجاح 💜')),
-                  );
-                }
-              }
-            },
-            child: const Text('حفظ'),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildTile({
     required IconData icon,
     required String title,
@@ -258,9 +206,16 @@ class _ExtraGamesScreenState extends State<ExtraGamesScreen> {
                   ),
                   _buildTile(
                     icon: Icons.edit_note_rounded,
-                    title: 'أضف سؤالك الخاص',
-                    subtitle: 'صمم بطاقتك الخاصة واحفظها على جهازك',
-                    onTap: _showAddCustomDialog,
+                    title: 'أسئلتنا الخاصة ✏️',
+                    subtitle: 'إدارة وإضافة وتعديل وحذف أسئلتكم المشتركة',
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ManageCustomCardsScreen(
+                          onUpdated: _loadData,
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -710,3 +665,250 @@ class FavoritesListScreen extends StatelessWidget {
     );
   }
 }
+
+// ─── 5. Manage Custom Cards Screen (CRUD) ────────────────
+class ManageCustomCardsScreen extends StatefulWidget {
+  final VoidCallback onUpdated;
+
+  const ManageCustomCardsScreen({super.key, required this.onUpdated});
+
+  @override
+  State<ManageCustomCardsScreen> createState() =>
+      _ManageCustomCardsScreenState();
+}
+
+class _ManageCustomCardsScreenState extends State<ManageCustomCardsScreen> {
+  List<Map<String, dynamic>> _customCards = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  void _load() {
+    setState(() {
+      _customCards = PreferencesService.getCustomCards();
+    });
+  }
+
+  void _editCard(Map<String, dynamic> card) {
+    final controller =
+        TextEditingController(text: card['text']?.toString() ?? '');
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('تعديل السؤال الخاص'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLines: 3,
+          decoration: const InputDecoration(border: OutlineInputBorder()),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              final newText = controller.text.trim();
+              if (newText.isNotEmpty) {
+                final updated = Map<String, dynamic>.from(card);
+                updated['text'] = newText;
+                Navigator.pop(ctx);
+                await PreferencesService.updateCustomCard(card['id'], updated);
+                _load();
+                widget.onUpdated();
+              }
+            },
+            child: const Text('حفظ التعديل'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _deleteCard(String id) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('تأكيد الحذف'),
+        content: const Text('هل ترغب في حذف هذا السؤال من مجموعتكم الخاصة؟'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await PreferencesService.deleteCustomCard(id);
+              _load();
+              widget.onUpdated();
+            },
+            child: const Text('حذف'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _addNewCard() {
+    final controller = TextEditingController();
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('إضافة سؤال جديد'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLines: 3,
+          decoration: const InputDecoration(
+            hintText: 'اكتبوا سؤالكم هنا...',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              final text = controller.text.trim();
+              if (text.isNotEmpty) {
+                final id = 'custom_${DateTime.now().microsecondsSinceEpoch}';
+                final newCustom = {
+                  'id': id,
+                  'category': 'أسئلتنا الخاصة',
+                  'type': 'سؤال',
+                  'level': 'خاص',
+                  'text': text,
+                  'purpose': 'سؤال أضفتموه بأنفسكم.',
+                };
+                Navigator.pop(ctx);
+                await PreferencesService.addCustomCard(newCustom);
+                _load();
+                widget.onUpdated();
+              }
+            },
+            child: const Text('حفظ'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('أسئلتنا الخاصة ✏️'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add_rounded),
+            tooltip: 'إضافة سؤال',
+            onPressed: _addNewCard,
+          ),
+        ],
+      ),
+      body: _customCards.isEmpty
+          ? Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('✏️', style: TextStyle(fontSize: 48)),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'لا توجد أسئلة خاصة حتى الآن',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.ink,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'أضيفوا أسئلتكم المشتركة ولحظاتكم المميزة للعب بها',
+                    style: TextStyle(color: AppColors.muted, fontSize: 13),
+                  ),
+                  const SizedBox(height: 20),
+                  FilledButton.icon(
+                    onPressed: _addNewCard,
+                    icon: const Icon(Icons.add_rounded),
+                    label: const Text('إضافة أول سؤال خاص'),
+                  ),
+                ],
+              ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: _customCards.length,
+              itemBuilder: (ctx, i) {
+                final card = _customCards[i];
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: AppColors.palePurple,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: const Text(
+                                'سؤال خاص',
+                                style: TextStyle(
+                                  color: AppColors.deepPurple,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                            const Spacer(),
+                            IconButton(
+                              icon: const Icon(Icons.edit_outlined,
+                                  color: AppColors.purple, size: 20),
+                              tooltip: 'تعديل',
+                              onPressed: () => _editCard(card),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete_outline_rounded,
+                                  color: Colors.redAccent, size: 20),
+                              tooltip: 'حذف',
+                              onPressed: () =>
+                                  _deleteCard(card['id'] as String),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          card['text']?.toString() ?? '',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.ink,
+                            height: 1.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+    );
+  }
+}
+
